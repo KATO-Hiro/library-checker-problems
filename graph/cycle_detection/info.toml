@@ -1,4 +1,4 @@
-title = 'Cycle Detection'
+title = 'Cycle Detection (Directed)'
 timelimit = 5.0
 forum = "https://github.com/yosupo06/library-checker-problems/issues/534"
 
@@ -17,10 +17,13 @@ forum = "https://github.com/yosupo06/library-checker-problems/issues/534"
 [[tests]]
     name = "random_dag_dense.cpp"
     number = 5
+[[tests]]
+    name = "long_cycle.cpp"
+    number = 2
 
 [[solutions]]
 	name = 'source_zero.cpp'
-	wrong = true
+	expect = "WA"
 
 [params]
 	N_MIN = 2

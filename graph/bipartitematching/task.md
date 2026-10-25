@@ -3,22 +3,34 @@
 @{lang.en}
 Given a bipartite graph with $L + R$ vertices and $M$ edges. $i$-th edge is $(a_i, b_i)$.
 
-Calculate the maxmum matching.
+Calculate the maximum matching.
 
 @{lang.ja}
 
-頂点数が $L, R$、辺が $M$ の二部グラフが与えられる。$i$ 番目の辺は $(a_i, b_i)$ である。
+頂点数が $L, R$、辺数が $M$ の二部グラフが与えられる。$i$ 番目の辺は $(a_i, b_i)$ である。
 最大マッチングを求めてください。
 
 @{lang.end}
 
 ## @{keyword.constraints}
 
+@{lang.en}
+
 - $1 \leq L, R \leq 100,000$
 - $1 \leq M \leq 200,000$
 - $0 \leq a_i < L$
 - $0 \leq b_i < R$
-- @{lang.en} There is no multiple edges @{lang.ja} 多重辺は存在しない @{lang.end}
+- There is no multiple edges.
+
+@{lang.ja}
+
+- $1 \leq L, R \leq 100,000$
+- $1 \leq M \leq 200,000$
+- $0 \leq a_i < L$
+- $0 \leq b_i < R$
+- 多重辺は存在しない
+
+@{lang.end}
 
 ## @{keyword.input}
 

@@ -1,15 +1,47 @@
 #!/usr/bin/env python3
 
 import unittest
+import json
+import colorlog
 from logging import basicConfig, getLogger
 from os import chdir, getenv
 from subprocess import run, check_output
 from shutil import copy
 from pathlib import Path
 from tempfile import TemporaryDirectory
-from problem import Problem
-from typing import List
+from generate import Problem, param_to_str, casename
+
 logger = getLogger(__name__)
+
+@unittest.skipIf(getenv('ENABLE_GENERATE_TEST') is None, "generate test take long time")
+class TestGenerateAll(unittest.TestCase):
+    def test_generate_all(self):
+        tomls = list(filter(lambda p: not p.match('test/**/info.toml'), Path('.').glob('**/info.toml')))
+        tomls = sorted(tomls, key=lambda x: x.parent.name)
+
+        cache_path = Path(getenv('VERSIONS_CACHE_PATH'))
+        versions = dict()
+        if cache_path.exists():
+            with open(cache_path, 'r') as cache_file:
+                versions = json.load(cache_file)
+
+        for toml in tomls:
+            problem = Problem(Path.cwd(), toml.parent)
+            name = problem.basedir.name
+            version = problem.problem_version()
+
+            with self.subTest(name=name):
+                if versions.get(name) == version:
+                    logger.info('Skip generated problem: {}'.format(name))
+                else:
+                    logger.info('Generate {}'.format(name))
+                    problem.generate(mode=Problem.Mode.TEST)
+                    problem.generate(mode=Problem.Mode.CLEAN)
+                    versions[name] = version
+
+        with open(cache_path, 'w') as f:
+            json.dump(versions, f)
+        
 
 
 def create_test_dir(problem_name: str) -> TemporaryDirectory:
@@ -115,47 +147,6 @@ class TestNonExistProblem(unittest.TestCase):
             ['./generate.py', '-p', 'dummy_problem'])
         self.assertNotEqual(proc.returncode, 0)
 
-
-class TestUnusedExample(unittest.TestCase):
-    def test_unused_example_user(self):
-        with create_test_dir('unused_example') as test_dir:
-            proc = run(
-                ['./generate.py', str(Path(test_dir) / 'unused_example/info.toml')])
-            self.assertEqual(proc.returncode, 0)
-
-    def test_unused_example_dev(self):
-        with create_test_dir('unused_example') as test_dir:
-            proc = run(['./generate.py', str(Path(test_dir) /
-                       'unused_example/info.toml'), '--dev'])
-            self.assertEqual(proc.returncode, 0)
-
-    def test_unused_example_test(self):
-        with create_test_dir('unused_example') as test_dir:
-            proc = run(['./generate.py', str(Path(test_dir) /
-                       'unused_example/info.toml'), '--test'])
-            self.assertNotEqual(proc.returncode, 0)
-
-
-class TestNonExistExample(unittest.TestCase):
-    def test_no_html(self):
-        with create_test_dir('nonexist_example') as test_dir:
-            proc = run(
-                ['./generate.py', str(Path(test_dir) / 'nonexist_example/info.toml')])
-            self.assertEqual(proc.returncode, 0)
-
-    def test_non_exist_dev(self):
-        with create_test_dir('nonexist_example') as test_dir:
-            proc = run(['./generate.py', str(Path(test_dir) /
-                       'nonexist_example/info.toml'), '--dev'])
-            self.assertNotEqual(proc.returncode, 0)
-
-    def test_non_exist_test(self):
-        with create_test_dir('nonexist_example') as test_dir:
-            proc = run(['./generate.py', str(Path(test_dir) /
-                       'nonexist_example/info.toml'), '--test'])
-            self.assertNotEqual(proc.returncode, 0)
-
-
 class TestUnusedGen(unittest.TestCase):
     def test_unused_gen_user(self):
         with create_test_dir('unused_gen') as test_dir:
@@ -208,6 +199,13 @@ class TestCallFromOutside(unittest.TestCase):
             chdir(str(cwd))
 
 
+class TestAllowRE(unittest.TestCase):
+    def test_allow_re(self):
+        with create_test_dir('allow_re') as test_dir:
+            proc = run(
+                ['./generate.py', str(Path(test_dir) / 'allow_re/info.toml'), '--test'])
+            self.assertEqual(proc.returncode, 0)
+
 class TestAllowTLE(unittest.TestCase):
     def test_allow_tle(self):
         with create_test_dir('allow_tle') as test_dir:
@@ -238,11 +236,11 @@ class TestCacheTest(unittest.TestCase):
             in_path = Path(test_dir) / \
                 'simple_aplusb/in/random_00.in'  # type: Path
             self.assertFalse(in_path.exists())
-            proc = run(
+            run(
                 ['./generate.py', str(Path(test_dir) / 'simple_aplusb/info.toml')])
             self.assertTrue(in_path.exists())
             time = in_path.stat().st_mtime_ns
-            proc = run(
+            run(
                 ['./generate.py', str(Path(test_dir) / 'simple_aplusb/info.toml')])
             self.assertTrue(in_path.exists())
             self.assertEqual(time, in_path.stat().st_mtime_ns)
@@ -252,11 +250,11 @@ class TestCacheTest(unittest.TestCase):
             in_path = Path(test_dir) / \
                 'simple_aplusb/in/random_00.in'  # type: Path
             self.assertFalse(in_path.exists())
-            proc = run(
+            run(
                 ['./generate.py', str(Path(test_dir) / 'simple_aplusb/info.toml'), '--dev'])
             self.assertTrue(in_path.exists())
             time = in_path.stat().st_mtime_ns
-            proc = run(
+            run(
                 ['./generate.py', str(Path(test_dir) / 'simple_aplusb/info.toml'), '--dev'])
             self.assertTrue(in_path.exists())
             self.assertNotEqual(time, in_path.stat().st_mtime_ns)
@@ -277,47 +275,38 @@ class TestListDependingFiles(unittest.TestCase):
         self.assertTrue(find_verifier)
 
 
-class TestGenerateHtml(unittest.TestCase):
-    def test_generate_html_dev(self):
-        with create_test_dir('simple_aplusb') as test_dir:
-            proc = run(['./generate.py', str(Path(test_dir) /
-                                             'simple_aplusb/info.toml'), '--dev'])
-            self.assertEqual(proc.returncode, 0)
-            self.assertTrue(
-                (Path(test_dir) / 'simple_aplusb' / 'task.html').exists())
+class TestCasename(unittest.TestCase):
+    # select problem by problem id
+    def test_casename(self):
+        self.assertEqual(casename('example', 0), "example_00")
+        self.assertEqual(casename('example', 1), "example_01")
+        self.assertEqual(casename('random', 10), "random_10")
 
-    def test_generate_html_test(self):
-        with create_test_dir('simple_aplusb') as test_dir:
-            proc = run(['./generate.py', str(Path(test_dir) /
-                                             'simple_aplusb/info.toml'), '--test'])
-            self.assertEqual(proc.returncode, 0)
-            self.assertTrue(
-                (Path(test_dir) / 'simple_aplusb' / 'task.html').exists())
-
-
-class TestHtmlDir(unittest.TestCase):
-    def test_generate_html_dev(self):
-        with create_test_dir('simple_aplusb') as test_dir:
-            html_dir = TemporaryDirectory()
-            proc = run(['./generate.py', str(Path(test_dir) /
-                                             'simple_aplusb/info.toml'), '--dev', '--htmldir', html_dir.name])
-            self.assertEqual(proc.returncode, 0)
-            self.assertTrue(
-                (Path(html_dir.name) / 'simple_aplusb.html').exists())
-
-    def test_generate_html_test(self):
-        with create_test_dir('simple_aplusb') as test_dir:
-            html_dir = TemporaryDirectory()
-            proc = run(['./generate.py', str(Path(test_dir) /
-                                             'simple_aplusb/info.toml'), '--test', '--htmldir', html_dir.name])
-            self.assertEqual(proc.returncode, 0)
-            self.assertTrue(
-                (Path(html_dir.name) / 'simple_aplusb.html').exists())
-
+class TestParam(unittest.TestCase):
+    # select problem by problem id
+    def test_convert_integer(self):
+        self.assertEqual(param_to_str('A', 100), "#define A (long long)100")
+        self.assertEqual(param_to_str('A', 1_000_000_007),
+                         "#define A (long long)1000000007")
+        self.assertEqual(param_to_str('A', 998244353),
+                         "#define A (long long)998244353")
 
 if __name__ == "__main__":
+    handler = colorlog.StreamHandler()
+    formatter = colorlog.ColoredFormatter(
+        "%(log_color)s%(asctime)s [%(levelname)s] %(message)s",
+        datefmt="%H:%M:%S",
+        log_colors={
+            'DEBUG':    'cyan',
+            'INFO':     'white',
+            'WARNING':  'yellow',
+            'ERROR':    'red',
+            'CRITICAL': 'red,bg_white',
+        })
+    handler.setFormatter(formatter)    
     basicConfig(
         level=getenv('LOG_LEVEL', 'DEBUG'),
-        format="%(asctime)s %(levelname)s %(name)s : %(message)s"
+        handlers=[handler]
     )
+
     unittest.main()

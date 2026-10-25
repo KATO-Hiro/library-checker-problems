@@ -1,15 +1,17 @@
 # Library Checker Problems
 
-![CI](https://github.com/yosupo06/library-checker-problems/workflows/CI/badge.svg)
+![CI](https://github.com/yosupo06/library-checker-problems/workflows/Diff/badge.svg)
 [![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](https://github.com/yosupo06/library-checker-problems/blob/master/LICENSE)
+
+[![Discord Banner](https://discordapp.com/api/guilds/1087310259447681114/widget.png?style=banner2)](https://discord.gg/DfJvTe5tzD)
 
 Source code of [https://judge.yosupo.jp](https://judge.yosupo.jp). You can get test cases of problems from this repository.
 
 ## Requirements
 
 - Linux / OS X / Windows(MinGW-w64)
-- python3.6+
-- g++ / clang++ (Needs --std=c++14 and __int128_t)
+- Python 3.8+
+- g++ / clang++ (Needs --std=c++17 and __int128_t)
 
 ## How to Use
 
@@ -17,7 +19,7 @@ Source code of [https://judge.yosupo.jp](https://judge.yosupo.jp). You can get t
 cd /path/to/library-checker-problems
 
 pip3 install -r requirements.txt
-# or pip3 install colorlog markdown jinja2
+# or pip3 install colorlog
 
 ulimit -s unlimited # for linux (doesn't need for OS X and WSL)
 
@@ -34,7 +36,6 @@ file datastructure/unionfind/checker # binary of output checker
 ```sh
 ./generate.py -p unionfind --dev # developer mode
 ./generate.py -p unionfind --test # test mode (for developer, exec this command before PR)
-cat datastructure/unionfind/task.html # statement
 
 ./generate.py $(find . -name "info.toml" -not -path "./test/*") # generate all testcases
 ```

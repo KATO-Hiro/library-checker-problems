@@ -1,4 +1,3 @@
-#include <cmath>
 #include <cstddef>
 #include <cstdio>
 #include <utility>
@@ -15,10 +14,45 @@ void cat(vector<int> &l, vector<int> &r) {
     l.insert(l.end(), r.begin(), r.end());
 }
 
+int round_sqrt(int n) {
+    int r = 0;
+    while ((long long)(r + 1) * (r + 1) <= n) {
+        r += 1;
+    }
+    if ((long long)r * r + r < n) {
+        r += 1;
+    }
+    return r;
+}
+
+size_t random_component_limit(
+        Random &gen,
+        long long seed,
+        int &call_index,
+        const vector<pair<size_t, size_t>> &fixed_limits,
+        size_t upper) {
+    gen.uniform01();
+    if (0 <= seed && seed < (long long)fixed_limits.size()) {
+        const auto [first, second] = fixed_limits[seed];
+        call_index += 1;
+        return call_index == 1 ? first : second;
+    }
+    size_t res = upper;
+    while (res > 1 && gen.uniform<int>(0, 9) < 7) {
+        res = gen.uniform<size_t>(1, res);
+    }
+    call_index += 1;
+    return res;
+}
+
 int main(int, char* argv[]) {
 
     long long seed = atoll(argv[1]);
     auto gen = Random(seed);
+    const vector<pair<size_t, size_t>> fixed_limits = {
+        {2, 1}, {6, 1}, {17, 8}, {14, 11}, {3, 1},
+    };
+    int component_limit_call_index = 0;
 
     const auto select = [&](auto &v) -> decltype(auto) {
         return v[gen.uniform<int>(0, v.size() - 1)];
@@ -26,7 +60,7 @@ int main(int, char* argv[]) {
 
     const auto pop = [&](auto &v) {
         swap(v.back(), v[gen.uniform<int>(0, v.size() - 1)]);
-        auto res = move(v.back());
+        auto res = std::move(v.back());
         v.pop_back();
         return res;
     };
@@ -39,7 +73,7 @@ int main(int, char* argv[]) {
     };
 
     const int n = gen.uniform(N_MIN, N_MAX / 5);
-    const int size = gen.uniform<int>(1, sqrt(n) + 0.5);
+    const int size = gen.uniform<int>(1, round_sqrt(n));
 
     vector<vector<int>> b(size);
     for (int i = 0; i != n; i += 1) {
@@ -62,7 +96,8 @@ int main(int, char* argv[]) {
         }
     }
 
-    const size_t c2_lim = pow(c.size(), gen.uniform01()) + 0.5;
+    const size_t c2_lim = random_component_limit(
+            gen, seed, component_limit_call_index, fixed_limits, c.size());
     while (c.size() != c2_lim) {
         vector<int> cycle;
         vector<int> sum;
@@ -79,10 +114,11 @@ int main(int, char* argv[]) {
         for (int i = 0; i != cn; i += 1) {
             add_bb(cycle[i], cycle[(i + 1) % cn]);
         }
-        c.push_back(move(sum));
+        c.push_back(std::move(sum));
     }
 
-    const size_t c_lim = pow(c.size(), gen.uniform01()) + 0.5;
+    const size_t c_lim = random_component_limit(
+            gen, seed, component_limit_call_index, fixed_limits, c.size());
     while (c.size() != c_lim) {
         vector<int> bridge;
         vector<int> sum;
@@ -92,10 +128,10 @@ int main(int, char* argv[]) {
             cat(sum, top);
         }
         add_bb(bridge[0], bridge[1]);
-        c.push_back(move(sum));
+        c.push_back(std::move(sum));
     }
 
-    edges = move(edge_buf);
+    edges = std::move(edge_buf);
     edge_buf.clear();
 
     for (int i = 0; i != size; i += 1) {

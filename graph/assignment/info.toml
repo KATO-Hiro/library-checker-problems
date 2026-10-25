@@ -22,9 +22,13 @@ forum = "https://github.com/yosupo06/library-checker-problems/issues/38"
     name = "hand_minus.cpp"
     number = 1
 
+[[tests]]
+    name = "multiplication_table.cpp"
+    number = 1
+
 [[solutions]]
     name = 'invalid.cpp'
-    wrong = true
+    expect = "WA"
 
 [params]
     N_MIN = 1
